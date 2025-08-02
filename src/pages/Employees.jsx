@@ -57,7 +57,7 @@ const EmployeeManagementSystem = () => {
     bankDetails: { accountNumber: '', ifscCode: '', bankName: '', branchName: '', accountHolderName: '' }
   });
 
-  const API_BASE_URL = 'http://localhost:4000/api';
+  const API_BASE_URL = 'https://billing-apis-5vt0.onrender.com/api';
 
   // API Helper Function
   const apiCall = async (endpoint, options = {}) => {
