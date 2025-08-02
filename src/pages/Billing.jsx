@@ -197,9 +197,9 @@ const RestaurantBillingSystem = () => {
       // Build query parameters based on backend API
       const queryParams = new URLSearchParams({
         page: page.toString(),
-        limit: '50',
+        limit: '200',
         available: 'true', // Only fetch available items for billing
-        sortBy: 'createdAt',
+        sortBy: 'isPopular',
         sortOrder: 'desc',
         ...filters
       });
@@ -1392,21 +1392,24 @@ const printBillToBrowser = (bill) => {
           </span>
           <div className="flex items-center space-x-2">
             <span>Sort by:</span>
-            <select 
-              className="border border-gray-200 rounded-lg px-2 py-1 text-sm"
-              onChange={(e) => {
-                const [sortBy, sortOrder] = e.target.value.split('-');
-                fetchMenuItems(1, { sortBy, sortOrder });
-              }}
-            >
-              <option value="name-asc">Name A-Z</option>
-              <option value="name-desc">Name Z-A</option>
-              <option value="price-asc">Price Low-High</option>
-              <option value="price-desc">Price High-Low</option>
-              <option value="averageRating-desc">Rating High-Low</option>
-              <option value="stock-desc">Stock High-Low</option>
-              <option value="createdAt-desc">Newest First</option>
-            </select>
+           // Line 750 ke around - Sort dropdown mein
+<select 
+  className="border border-gray-200 rounded-lg px-2 py-1 text-sm"
+  defaultValue="isPopular-desc"  // Ye add karo
+  onChange={(e) => {
+    const [sortBy, sortOrder] = e.target.value.split('-');
+    fetchMenuItems(1, { sortBy, sortOrder });
+  }}
+>
+  <option value="isPopular-desc">Popular First</option>  // Ye add karo top mein
+  <option value="name-asc">Name A-Z</option>
+  <option value="name-desc">Name Z-A</option>
+  <option value="price-asc">Price Low-High</option>
+  <option value="price-desc">Price High-Low</option>
+  <option value="averageRating-desc">Rating High-Low</option>
+  <option value="stock-desc">Stock High-Low</option>
+  <option value="createdAt-desc">Newest First</option>
+</select>
           </div>
         </div>
       </div>
