@@ -70,7 +70,7 @@ const SettingsPage = () => {
     backup: null
   });
 
-  const API_BASE_URL = 'https://billing-apis-5vt0.onrender.com';
+  const API_BASE_URL = 'https://billing-apis-5vt0.onrender.com/api';
 
   const apiCall = async (endpoint, options = {}) => {
     const token = localStorage.getItem('token');

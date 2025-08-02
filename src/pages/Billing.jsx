@@ -60,7 +60,7 @@ const RestaurantBillingSystem = () => {
   const customerPhoneRef = useRef(null);
   const discountRef = useRef(null);
   // API Configuration
-  const API_BASE_URL = import.meta.env.REACT_APP_API_URL || 'https://billing-apis-5vt0.onrender.com';
+  const API_BASE_URL = import.meta.env.REACT_APP_API_URL || 'https://billing-apis-5vt0.onrender.com/api';
 
   const apiCall = useCallback(async (endpoint, options = {}) => {
     try {

@@ -18,7 +18,7 @@ import Sidebar from './pages/SideBar';
 import SettingsPage from './pages/Settings';
 
 // API Configuration
-const API_BASE_URL = 'https://billing-apis-5vt0.onrender.com';
+const API_BASE_URL = 'https://billing-apis-5vt0.onrender.com/api';
 
 // Enhanced API Helper with better error handling
 const apiCall = async (endpoint, options = {}) => {
