@@ -60,7 +60,7 @@ const RestaurantBillingSystem = () => {
   const customerPhoneRef = useRef(null);
   const discountRef = useRef(null);
   // API Configuration
-  const API_BASE_URL = import.meta.env.REACT_APP_API_URL || 'https://billing-apis-5vt0.onrender.com/api';
+  const API_BASE_URL = import.meta.env.REACT_APP_API_URL || 'http://localhost:4000/api';
 
   const apiCall = useCallback(async (endpoint, options = {}) => {
     try {
@@ -671,207 +671,260 @@ const RestaurantBillingSystem = () => {
     }
   };
 
-  const printBillToBrowser = (bill) => {
-    const printWindow = window.open('', '_blank', 'width=400,height=600');
-    const printContent = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Bill ${bill.billNumber}</title>
-          <style>
-            @media print {
-              @page { size: 80mm auto; margin: 5mm; }
-              body { -webkit-print-color-adjust: exact; color-adjust: exact; }
-            }
-            * { box-sizing: border-box; margin: 0; padding: 0; }
-            body { 
-              font-family: 'Courier New', monospace; 
-              font-size: 12px; 
-              line-height: 1.4;
-              color: #000;
-              background: white;
-              padding: 8px;
-              width: 72mm;
-              margin: 0 auto;
-            }
-            .header { 
-              text-align: center; 
-              border-bottom: 2px solid #000; 
-              padding-bottom: 8px; 
-              margin-bottom: 12px; 
-            }
-            .header h1 { font-size: 18px; font-weight: bold; margin-bottom: 4px; }
-            .header p { font-size: 10px; margin: 1px 0; }
-            .section { margin-bottom: 12px; }
-            .bill-info { font-size: 11px; }
-            .bill-info div { 
-              display: flex; 
-              justify-content: space-between; 
-              margin: 2px 0; 
-            }
-            .bill-info .label { font-weight: bold; }
-            .items-header { 
-              border-bottom: 1px solid #000; 
-              font-weight: bold; 
-              padding: 4px 0; 
-              font-size: 11px;
-              display: flex;
-              justify-content: space-between;
-            }
-            .item { 
-              padding: 3px 0; 
-              border-bottom: 1px dotted #ccc;
-              font-size: 10px;
-            }
-            .item-row {
-              display: flex;
-              justify-content: space-between;
-              align-items: center;
-            }
-            .item-name { font-weight: bold; flex: 1; }
-            .item-qty { margin: 0 8px; text-align: center; min-width: 20px; }
-            .item-price { text-align: right; font-weight: bold; min-width: 50px; }
-            .separator { border-top: 1px dashed #000; margin: 8px 0; }
-            .summary { font-size: 11px; }
-            .summary-row { 
-              display: flex; 
-              justify-content: space-between; 
-              margin: 3px 0; 
-            }
-            .total-row { 
-              font-weight: bold; 
-              font-size: 13px; 
-              border-top: 2px solid #000; 
-              padding-top: 4px;
-              margin-top: 8px;
-            }
-            .footer { 
-              text-align: center; 
-              font-size: 9px; 
-              margin-top: 12px;
-              padding-top: 8px;
-              border-top: 1px dashed #000;
-            }
-            .footer p { margin: 2px 0; }
-            .thank-you { 
-              font-size: 11px; 
-              font-weight: bold; 
-              margin: 8px 0; 
-              text-align: center;
-            }
-            .print-button {
-              background: #007bff;
-              color: white;
-              border: none;
-              padding: 10px 20px;
-              border-radius: 5px;
-              cursor: pointer;
-              font-size: 14px;
-              margin: 10px;
-              display: block;
-            }
-            @media print {
-              .print-button { display: none; }
-              .no-print { display: none; }
-            }
-          </style>
-        </head>
-        <body>
-          <div class="no-print" style="text-align: center; margin-bottom: 10px;">
-            <button class="print-button" onclick="window.print()">🖨️ Print Bill</button>
-            <button class="print-button" style="background: #6c757d;" onclick="window.close()">❌ Close</button>
-          </div>
-          
-          <div class="header">
-            <h1>🍽️ usalwala</h1>
-            <p>123 Main Street, Business District</p>
-            <p>📞 +91-9876543210</p>
-            <p>✉️ contact@usalwala.com</p>
-            <p>🏢 GSTIN: 123456789012345</p>
-          </div>
-          
-          <div class="section bill-info">
-            <div><span class="label">Bill No:</span><span>${bill.billNumber || 'N/A'}</span></div>
-            <div><span class="label">Date:</span><span>${new Date(bill.createdAt || new Date()).toLocaleDateString('en-IN')}</span></div>
-            <div><span class="label">Time:</span><span>${new Date(bill.createdAt || new Date()).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</span></div>
-            <div><span class="label">Customer:</span><span>${bill.customerName || 'Walk-in'}</span></div>
-            <div><span class="label">Payment:</span><span>${(bill.paymentMethod || 'cash').toUpperCase()}</span></div>
-            ${bill.customerPhone ? `<div><span class="label">Phone:</span><span>${bill.customerPhone}</span></div>` : ''}
-            ${bill.tableNumber ? `<div><span class="label">Table:</span><span>#${bill.tableNumber}</span></div>` : ''}
-          </div>
-          
-          <div class="separator"></div>
-          
-          <div class="items-header">
-            <span>Item</span>
-            <span>Qty</span>
-            <span>Amount</span>
-          </div>
-          
-          <div class="section">
-            ${(bill.items || []).map(item => `
-              <div class="item">
-                <div class="item-row">
-                  <span class="item-name">${item.name || 'Unknown Item'}</span>
-                  <span class="item-qty">${item.quantity || 1}</span>
-                  <span class="item-price">₹${(item.total || 0).toFixed(2)}</span>
-                </div>
-                ${item.quantity > 1 ? `<div style="font-size: 9px; color: #666; margin-left: 8px;">@ ₹${item.price} each</div>` : ''}
-              </div>
-            `).join('')}
-          </div>
-          
-          <div class="separator"></div>
-          
-          <div class="section summary">
-            <div class="summary-row"><span>Subtotal:</span><span>₹${(bill.subtotal || 0).toFixed(2)}</span></div>
-            <div class="summary-row"><span>GST (18%):</span><span>₹${(bill.gst || 0).toFixed(2)}</span></div>
-            ${(bill.discount || 0) > 0 ? `<div class="summary-row" style="color: #28a745;"><span>Discount:</span><span>-₹${bill.discount.toFixed(2)}</span></div>` : ''}
-            <div class="summary-row total-row"><span>TOTAL:</span><span>₹${(bill.total || 0).toFixed(2)}</span></div>
-          </div>
-          
-          <div class="separator"></div>
-          
-          <div class="thank-you">
-            <p>🙏 THANK YOU FOR DINING WITH US! 🙏</p>
-            <p>😊 Please visit us again! 😊</p>
-          </div>
-          
-          <div style="text-align: center; font-size: 10px; margin: 8px 0;">
-            <p>⭐ Rate us 5 stars & get 10% off next visit ⭐</p>
-            <p>📱 Follow us on social media for offers</p>
-          </div>
-          
-          <div class="footer">
-            <p>Bill ID: ${bill._id?.slice(-12) || 'N/A'}</p>
-            <p>Printed: ${new Date().toLocaleString('en-IN')}</p>
-            <p>Software: usalwala Professional v2.0</p>
-            <p>This is a computer generated receipt</p>
-          </div>
-          
-          <script>
-            window.onload = function() {
-              setTimeout(function() {
-                window.print();
-              }, 500);
-            };
-            
-            window.onafterprint = function() {
-              setTimeout(function() {
-                window.close();
-              }, 1000);
-            };
-          </script>
-        </body>
-      </html>
-    `;
-    
-    printWindow.document.write(printContent);
-    printWindow.document.close();
-    
-    showNotification('✅ Bill opened in new window for printing!', 'success');
-  };
 
+// Enhanced Thermal Print with darker, clearer text
+const printBillToBrowser = (bill) => {
+  const printWindow = window.open('', '_blank', 'width=400,height=600');
+  const printContent = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>Bill ${bill.billNumber}</title>
+        <style>
+          @media print {
+            @page { size: 70mm auto; margin: 2mm; }
+            body { -webkit-print-color-adjust: exact; color-adjust: exact; }
+          }
+          * { box-sizing: border-box; margin: 0; padding: 0; }
+          body { 
+            font-family: 'Courier New', monospace; 
+            font-size: 11px; 
+            line-height: 1.4;
+            color: #000000;
+            background: white;
+            padding: 4px;
+            width: 66mm;
+            margin: 0 auto;
+            font-weight: 600;
+          }
+          .header { 
+            text-align: center; 
+            border-bottom: 3px solid #000000; 
+            padding-bottom: 6px; 
+            margin-bottom: 8px; 
+          }
+          .header h1 { 
+            font-size: 16px; 
+            font-weight: 800; 
+            margin-bottom: 4px; 
+            color: #000000;
+          }
+          .header p { 
+            font-size: 9px; 
+            margin: 1px 0; 
+            font-weight: 600;
+            color: #000000;
+          }
+          .section { margin-bottom: 8px; }
+          .bill-info { font-size: 10px; font-weight: 600; }
+          .bill-info div { 
+            display: flex; 
+            justify-content: space-between; 
+            margin: 2px 0; 
+            font-weight: 700;
+          }
+          .bill-info .label { 
+            font-weight: 700; 
+            color: #000000;
+          }
+          .bill-info .value {
+            font-weight: 700;
+            color: #000000;
+          }
+          .items-header { 
+            border-bottom: 2px solid #000000; 
+            border-top: 2px solid #000000;
+            font-weight: 800; 
+            padding: 4px 0; 
+            font-size: 10px;
+            display: flex;
+            justify-content: space-between;
+            background: #f0f0f0;
+            color: #000000;
+          }
+          .item { 
+            padding: 3px 0; 
+            border-bottom: 1px solid #666666;
+            font-size: 9px;
+            font-weight: 600;
+          }
+          .item-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+          }
+          .item-name { 
+            font-weight: 700; 
+            flex: 1; 
+            color: #000000;
+          }
+          .item-qty { 
+            margin: 0 8px; 
+            text-align: center; 
+            min-width: 20px; 
+            font-weight: 700;
+            color: #000000;
+          }
+          .item-price { 
+            text-align: right; 
+            font-weight: 700; 
+            min-width: 50px;
+            color: #000000;
+          }
+          .separator { 
+            border-top: 2px dashed #000000; 
+            margin: 8px 0; 
+          }
+          .summary { font-size: 10px; font-weight: 600; }
+          .summary-row { 
+            display: flex; 
+            justify-content: space-between; 
+            margin: 3px 0; 
+            font-weight: 700;
+            color: #000000;
+          }
+          .total-row { 
+            font-weight: 800; 
+            font-size: 12px; 
+            border-top: 3px solid #000000; 
+            border-bottom: 3px solid #000000;
+            padding: 4px 0;
+            margin: 8px 0;
+            background: #f5f5f5;
+            color: #000000;
+          }
+          .footer { 
+            text-align: center; 
+            font-size: 8px; 
+            margin-top: 8px;
+            padding-top: 6px;
+            border-top: 2px dashed #000000;
+            font-weight: 600;
+            color: #000000;
+          }
+          .footer p { 
+            margin: 2px 0; 
+            font-weight: 600;
+          }
+          .thank-you { 
+            font-size: 10px; 
+            font-weight: 700; 
+            margin: 8px 0; 
+            text-align: center;
+            color: #000000;
+            border: 2px solid #000000;
+            padding: 6px;
+            background: #f8f8f8;
+          }
+          .print-button {
+            background: #000000;
+            color: white;
+            border: 2px solid #000000;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px;
+            display: block;
+            font-weight: bold;
+          }
+          @media print {
+            .print-button { display: none; }
+            .no-print { display: none; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="no-print" style="text-align: center; margin-bottom: 10px;">
+          <button class="print-button" onclick="window.print()">🖨️ Print Bill</button>
+          <button class="print-button" style="background: #333;" onclick="window.close()">❌ Close</button>
+        </div>
+        
+        <div class="header">
+          <h1>🍽️ usalwala</h1>
+          <p> Scheme 78, Part 2, Near Brilliant Convention</p>
+          <p>📞 +91-9691954035</p>
+          <p>✉️ contact@usalwala.com</p>
+          <p>🏢 GSTIN: 123456789012345</p>
+        </div>
+        
+        <div class="section bill-info">
+          <div><span class="label">Bill No:</span><span class="value">${bill.billNumber || 'N/A'}</span></div>
+          <div><span class="label">Date:</span><span class="value">${new Date(bill.createdAt || new Date()).toLocaleDateString('en-IN')}</span></div>
+          <div><span class="label">Time:</span><span class="value">${new Date(bill.createdAt || new Date()).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</span></div>
+          <div><span class="label">Customer:</span><span class="value">${bill.customerName || 'Walk-in'}</span></div>
+          <div><span class="label">Payment:</span><span class="value">${(bill.paymentMethod || 'cash').toUpperCase()}</span></div>
+          ${bill.customerPhone ? `<div><span class="label">Phone:</span><span class="value">${bill.customerPhone}</span></div>` : ''}
+          ${bill.tableNumber ? `<div><span class="label">Table:</span><span class="value">#${bill.tableNumber}</span></div>` : ''}
+        </div>
+        
+        <div class="separator"></div>
+        
+        <div class="items-header">
+          <span>ITEM</span>
+          <span>QTY</span>
+          <span>AMOUNT</span>
+        </div>
+        
+        <div class="section">
+          ${(bill.items || []).map(item => `
+            <div class="item">
+              <div class="item-row">
+                <span class="item-name">${item.name || 'Unknown Item'}</span>
+                <span class="item-qty">${item.quantity || 1}</span>
+                <span class="item-price">₹${(item.total || 0).toFixed(2)}</span>
+              </div>
+              ${item.quantity > 1 ? `<div style="font-size: 8px; color: #333; margin-left: 6px; font-weight: 600;">@ ₹${item.price} each</div>` : ''}
+            </div>
+          `).join('')}
+        </div>
+        
+        <div class="separator"></div>
+        
+        <div class="section summary">
+          <div class="summary-row"><span>Subtotal:</span><span>₹${(bill.subtotal || 0).toFixed(2)}</span></div>
+          <div class="summary-row"><span>GST (18%):</span><span>₹${(bill.gst || 0).toFixed(2)}</span></div>
+          ${(bill.discount || 0) > 0 ? `<div class="summary-row" style="color: #000;"><span>Discount:</span><span>-₹${bill.discount.toFixed(2)}</span></div>` : ''}
+          <div class="summary-row total-row"><span>TOTAL:</span><span>₹${(bill.total || 0).toFixed(2)}</span></div>
+        </div>
+        
+        <div class="separator"></div>
+        
+        <div class="thank-you">
+          <p>🙏 THANK YOU FOR DINING WITH US! 🙏</p>
+          <p>😊 Please visit us again! 😊</p>
+        </div>
+        
+        
+        <div class="footer">
+          <p>Bill ID: ${bill._id?.slice(-12) || 'N/A'}</p>
+          <p>Printed: ${new Date().toLocaleString('en-IN')}</p>
+          <p>Software service: Nexisparkx technologies</p>
+          <p>This is a computer generated receipt</p>
+        </div>
+        
+        <script>
+          window.onload = function() {
+            setTimeout(function() {
+              window.print();
+            }, 500);
+          };
+          
+          window.onafterprint = function() {
+            setTimeout(function() {
+              window.close();
+            }, 1000);
+          };
+        </script>
+      </body>
+    </html>
+  `;
+  
+  printWindow.document.write(printContent);
+  printWindow.document.close();
+  
+  showNotification('✅ Bill opened in new window for printing!', 'success');
+};
   const testPrinter = async () => {
     try {
       showNotification('Testing printer connection... 🖨️', 'info');
@@ -1177,7 +1230,7 @@ const RestaurantBillingSystem = () => {
                   total: 454.3,
                   paymentMethod: 'cash',
                   createdAt: new Date(),
-                  customerPhone: '+91-9876543210',
+                  customerPhone: '+91-9691954035',
                   tableNumber: '5'
                 };
                 printBillToBrowser(testBill);
@@ -2116,11 +2169,11 @@ const RestaurantBillingSystem = () => {
               <div className="text-gray-600 space-y-2">
                 <p className="flex items-center justify-center space-x-2 text-lg">
                   <MapPin className="w-5 h-5" />
-                  <span>123 Main Street, Business District, City</span>
+                  <span> Scheme 78, Part 2, Near Brilliant Convention, City</span>
                 </p>
                 <p className="flex items-center justify-center space-x-2">
                   <Phone className="w-4 h-4" />
-                  <span>+91-9876543210</span>
+                  <span>+91-9691954035</span>
                   <span>•</span>
                   <Mail className="w-4 h-4" />
                   <span>contact@usalwala.com</span>

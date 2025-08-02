@@ -13,7 +13,7 @@ const SettingsPage = () => {
     restaurant: {
       name: 'My Restaurant',
       address: '123 Main Street, City',
-      phone: '+91 9876543210',
+      phone: '+91 9691954035',
       email: 'restaurant@example.com',
       gstin: 'GSTIN123456789',
       currency: 'INR',
@@ -70,7 +70,7 @@ const SettingsPage = () => {
     backup: null
   });
 
-  const API_BASE_URL = 'https://billing-apis-5vt0.onrender.com/api';
+  const API_BASE_URL = 'http://localhost:4000/api';
 
   const apiCall = async (endpoint, options = {}) => {
     const token = localStorage.getItem('token');

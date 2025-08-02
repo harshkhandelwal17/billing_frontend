@@ -57,7 +57,7 @@ const EmployeeManagementSystem = () => {
     bankDetails: { accountNumber: '', ifscCode: '', bankName: '', branchName: '', accountHolderName: '' }
   });
 
-  const API_BASE_URL = 'https://billing-apis-5vt0.onrender.com/api';
+  const API_BASE_URL = 'http://localhost:4000/api';
 
   // API Helper Function
   const apiCall = async (endpoint, options = {}) => {
@@ -74,7 +74,7 @@ const EmployeeManagementSystem = () => {
     try {
       const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
       const data = await response.json();
-      
+      console.log(data)
       if (!response.ok) {
         throw new Error(data.message || 'Something went wrong');
       }
@@ -130,13 +130,16 @@ const EmployeeManagementSystem = () => {
   };
 
   const fetchTodayAttendance = async () => {
-    try {
-      const data = await apiCall('/employees/attendance/today');
-      setTodayAttendance(data.data.attendanceSummary || []);
-    } catch (error) {
-      console.error('Failed to fetch attendance:', error);
-    }
-  };
+  try {
+    const data = await apiCall('/employees/attendance/today');
+    // Handle different response structures
+    const attendanceData = data.data?.attendanceSummary || data.data || data.attendanceSummary || [];
+    setTodayAttendance(attendanceData);
+  } catch (error) {
+    console.error('Failed to fetch attendance:', error);
+    // Don't show alert for attendance fetch failures, just log them
+  }
+};
 
   const fetchAttendanceStats = async () => {
     try {
@@ -183,7 +186,7 @@ const EmployeeManagementSystem = () => {
       if (payload.salary.bonus) payload.salary.bonus = parseFloat(payload.salary.bonus);
       if (payload.salary.deductions) payload.salary.deductions = parseFloat(payload.salary.deductions);
       if (payload.hourlyRate) payload.hourlyRate = parseFloat(payload.hourlyRate);
-
+    console.log(editingEmployee)
       await apiCall(`/employees/${editingEmployee._id}`, {
         method: 'PUT',
         body: JSON.stringify(payload)
@@ -253,32 +256,33 @@ const EmployeeManagementSystem = () => {
   };
 
   const handleStartBreak = async (employeeId, type = 'other') => {
-    try {
-      await apiCall(`/employees/${employeeId}/break/start`, {
-        method: 'POST',
-        body: JSON.stringify({ type })
-      });
-      
-      await fetchTodayAttendance();
-      alert(`${type.charAt(0).toUpperCase() + type.slice(1)} break started!`);
-    } catch (error) {
-      alert('Failed to start break: ' + error.message);
-    }
-  };
+  try {
+    await apiCall(`/employees/${employeeId}/break/start`, {
+      method: 'POST',
+      body: JSON.stringify({ type })
+    });
+    
+    await fetchTodayAttendance();
+    alert(`${type.charAt(0).toUpperCase() + type.slice(1)} break started!`);
+  } catch (error) {
+    console.error('Break start error:', error);
+    alert('Failed to start break: ' + error.message);
+  }
+};
 
   const handleEndBreak = async (employeeId) => {
-    try {
-      await apiCall(`/employees/${employeeId}/break/end`, {
-        method: 'POST'
-      });
-      
-      await fetchTodayAttendance();
-      alert('Break ended!');
-    } catch (error) {
-      alert('Failed to end break: ' + error.message);
-    }
-  };
-
+  try {
+    await apiCall(`/employees/${employeeId}/break/end`, {
+      method: 'POST'
+    });
+    
+    await fetchTodayAttendance();
+    alert('Break ended!');
+  } catch (error) {
+    console.error('Break end error:', error);
+    alert('Failed to end break: ' + error.message);
+  }
+};
   // View Details Functions
   const viewEmployeeDetails = async (employee) => {
     try {
@@ -290,32 +294,195 @@ const EmployeeManagementSystem = () => {
     }
   };
 
-  const viewSalaryDetails = async (employee) => {
-    try {
-      const month = new Date().getMonth() + 1;
-      const year = new Date().getFullYear();
-      const data = await apiCall(`/employees/${employee._id}/salary/${month}/${year}`);
-      setSalaryData(data.data);
-      console.log('Salary Data:', data.data);
-      setSelectedEmployee(employee);
-      setShowSalaryModal(true);
-    } catch (error) {
-      alert('Failed to fetch salary details: ' + error.message);
-    }
-  };
+// Fix for React Object Rendering Error
 
-  const viewPayslip = async (employee) => {
-    try {
-      const month = new Date().getMonth() + 1;
-      const year = new Date().getFullYear();
-      const data = await apiCall(`/employees/${employee._id}/payslip/${month}/${year}`);
-      setPayslipData(data.data);
-      setSelectedEmployee(employee);
-      setShowPayslipModal(true);
-    } catch (error) {
-      alert('Failed to fetch payslip: ' + error.message);
-    }
-  };
+// 1. Fix the Salary Modal - Replace the problematic section:
+{showSalaryModal && selectedEmployee && salaryData && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-screen overflow-hidden">
+      <div className="p-6 border-b border-gray-200">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-semibold text-gray-800">
+            Salary Details - {selectedEmployee.name}
+          </h2>
+          <button
+            onClick={() => {
+              setShowSalaryModal(false);
+              setSalaryData(null);
+              setSelectedEmployee(null);
+            }}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+      </div>
+      <div className="p-6">
+        <div className="space-y-6">
+          <div className="text-center">
+            <h3 className="text-lg font-semibold text-gray-800">
+              Salary Breakdown for {salaryData.period?.monthName || 'Current Month'}
+            </h3>
+          </div>
+
+          <div className="bg-gray-50 rounded-lg p-6">
+            <div className="space-y-3">
+              <div className="flex justify-between">
+                <span>Base Salary:</span>
+                <span className="font-medium">₹{(salaryData.earnings?.baseSalary || 0).toLocaleString()}</span>
+              </div>
+
+              {(salaryData.earnings?.overtimePay || 0) > 0 && (
+                <div className="flex justify-between">
+                  <span>Overtime Pay:</span>
+                  <span className="font-medium">₹{(salaryData.earnings?.overtimePay || 0).toLocaleString()}</span>
+                </div>
+              )}
+
+              {(salaryData.earnings?.totalAllowances || 0) > 0 && (
+                <div className="flex justify-between">
+                  <span>Allowances:</span>
+                  <span className="font-medium">₹{(salaryData.earnings?.totalAllowances || 0).toLocaleString()}</span>
+                </div>
+              )}
+              
+              <hr className="border-gray-300" />
+              
+              <div className="flex justify-between">
+                <span>Gross Salary:</span>
+                <span className="font-medium">₹{(salaryData.earnings?.grossSalary || 0).toLocaleString()}</span>
+              </div>
+              
+              {(salaryData.deductions?.totalDeductions || 0) > 0 && (
+                <div className="flex justify-between text-red-600">
+                  <span>Deductions:</span>
+                  <span className="font-medium">-₹{(salaryData.deductions?.totalDeductions || 0).toLocaleString()}</span>
+                </div>
+              )}
+              
+              <hr className="border-gray-300" />
+              
+              <div className="flex justify-between text-lg font-bold text-green-600">
+                <span>Net Salary:</span>
+                <span>₹{(salaryData.earnings?.netSalary || 0).toLocaleString()}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="text-center p-4 bg-blue-50 rounded-lg">
+              <p className="text-sm text-gray-600">Present Days</p>
+              <p className="text-2xl font-bold text-blue-600">
+                {salaryData.period?.presentDays || salaryData.attendance?.presentDays || 0}
+              </p>
+            </div>
+            <div className="text-center p-4 bg-green-50 rounded-lg">
+              <p className="text-sm text-gray-600">Attendance %</p>
+              <p className="text-2xl font-bold text-green-600">
+                {salaryData.period?.attendancePercentage || salaryData.attendance?.attendancePercentage || 0}%
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
+
+// 2. Fix the viewSalaryDetails function to ensure proper data structure:
+const viewSalaryDetails = async (employee) => {
+  try {
+    const month = new Date().getMonth() + 1;
+    const year = new Date().getFullYear();
+    const data = await apiCall(`/employees/${employee._id}/salary/${month}/${year}`);
+    
+    console.log('Raw salary data:', data); // Debug log
+    
+    // Ensure we have a proper data structure
+    const salaryInfo = data.data || data;
+    
+    // Create a clean data structure to avoid rendering objects
+    const cleanSalaryData = {
+      period: {
+        monthName: salaryInfo.period?.monthName || `${month}/${year}`,
+        presentDays: Number(salaryInfo.period?.presentDays || salaryInfo.attendance?.presentDays || 0),
+        attendancePercentage: Number(salaryInfo.period?.attendancePercentage || salaryInfo.attendance?.attendancePercentage || 0)
+      },
+      earnings: {
+        baseSalary: Number(salaryInfo.earnings?.baseSalary || salaryInfo.baseSalary || salaryInfo.basePay || 0),
+        overtimePay: Number(salaryInfo.earnings?.overtimePay || salaryInfo.overtimePay || 0),
+        totalAllowances: Number(salaryInfo.earnings?.totalAllowances || 0),
+        grossSalary: Number(salaryInfo.earnings?.grossSalary || salaryInfo.grossSalary || 0),
+        netSalary: Number(salaryInfo.earnings?.netSalary || salaryInfo.netSalary || 0)
+      },
+      deductions: {
+        totalDeductions: Number(salaryInfo.deductions?.totalDeductions || 0)
+      },
+      attendance: {
+        presentDays: Number(salaryInfo.attendance?.presentDays || 0),
+        attendancePercentage: Number(salaryInfo.attendance?.attendancePercentage || 0)
+      }
+    };
+    
+    console.log('Clean salary data:', cleanSalaryData); // Debug log
+    
+    setSalaryData(cleanSalaryData);
+    setSelectedEmployee(employee);
+    setShowSalaryModal(true);
+  } catch (error) {
+    console.error('Salary fetch error:', error);
+    alert('Failed to fetch salary details: ' + error.message);
+  }
+};
+
+
+
+ const viewPayslip = async (employee) => {
+  try {
+    const month = new Date().getMonth() + 1;
+    const year = new Date().getFullYear();
+    const data = await apiCall(`/employees/${employee._id}/salary/${month}/${year}`);
+    
+    console.log('Raw payslip data:', data); // Debug log
+    
+    const salaryInfo = data.data || data;
+    
+    // Create clean payslip data structure
+    const cleanPayslipData = {
+      employee: {
+        name: String(employee.name || ''),
+        employeeId: String(employee.employeeId || ''),
+        department: String(employee.department || '')
+      },
+      period: {
+        monthName: String(salaryInfo.period?.monthName || new Date(year, month - 1).toLocaleString('default', { month: 'long' })),
+        year: Number(year),
+        workingDays: Number(salaryInfo.period?.workingDays || 30),
+        presentDays: Number(salaryInfo.period?.presentDays || salaryInfo.attendance?.presentDays || 0)
+      },
+      earnings: {
+        basicSalary: Number(salaryInfo.earnings?.baseSalary || salaryInfo.baseSalary || salaryInfo.basePay || 0),
+        overtimePay: Number(salaryInfo.earnings?.overtimePay || salaryInfo.overtimePay || 0),
+        totalEarnings: Number(salaryInfo.earnings?.grossSalary || salaryInfo.grossSalary || 0)
+      },
+      deductions: Array.isArray(salaryInfo.deductions?.deductions) ? salaryInfo.deductions.deductions : [],
+      totalDeductions: Number(salaryInfo.deductions?.totalDeductions || 0),
+      netPay: Number(salaryInfo.earnings?.netSalary || salaryInfo.netSalary || 0),
+      generatedOn: new Date().toISOString()
+    };
+    
+    console.log('Clean payslip data:', cleanPayslipData); // Debug log
+    
+    setPayslipData(cleanPayslipData);
+    setSelectedEmployee(employee);
+    setShowPayslipModal(true);
+  } catch (error) {
+    console.error('Payslip fetch error:', error);
+    alert('Failed to fetch payslip: ' + error.message);
+  }
+};
+
+
 
   // Form Helper Functions
   const resetForm = () => {
@@ -532,7 +699,8 @@ const EmployeeManagementSystem = () => {
   // Employee Card Component
   const EmployeeCard = ({ employee }) => {
     const attendance = todayAttendance.find(att => att.id === employee._id);
-    const isOnBreak = attendance?.onBreak || false;
+  const isOnBreak = attendance?.onBreak || false;
+
     
     return (
       <div className="bg-white rounded-xl shadow-sm border hover:shadow-md transition-all duration-200">
@@ -604,54 +772,52 @@ const EmployeeManagementSystem = () => {
           </div>
 
           {/* Action Buttons */}
-          <div className="space-y-2">
-            {/* Attendance Actions */}
-            <div className="flex space-x-2">
-              {attendance?.isPresent ? (
-                <>
-                  {isOnBreak ? (
-                    <button
-                      onClick={() => handleEndBreak(employee._id)}
-                      className="flex-1 bg-orange-100 text-orange-700 py-2 px-3 rounded-lg hover:bg-orange-200 transition-colors text-sm font-medium"
-                    >
-                      End Break
-                    </button>
-                  ) : (
-                    <div className="flex space-x-1 flex-1">
-                      <button
-                        onClick={() => handleStartBreak(employee._id, 'lunch')}
-                        className="flex-1 bg-yellow-100 text-yellow-700 py-2 px-2 rounded-lg hover:bg-yellow-200 transition-colors text-xs font-medium"
-                        title="Lunch Break"
-                      >
-                        Lunch
-                      </button>
-                      <button
-                        onClick={() => handleStartBreak(employee._id, 'tea')}
-                        className="flex-1 bg-green-100 text-green-700 py-2 px-2 rounded-lg hover:bg-green-200 transition-colors text-xs font-medium"
-                        title="Tea Break"
-                      >
-                        Tea
-                      </button>
-                    </div>
-                  )}
-                  
-                  <button
-                    onClick={() => handleCheckOut(employee._id)}
-                    disabled={attendance.logoutTime}
-                    className="flex-1 bg-red-100 text-red-700 py-2 px-3 rounded-lg hover:bg-red-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium"
-                  >
-                    {attendance.logoutTime ? 'Checked Out' : 'Check Out'}
-                  </button>
-                </>
-              ) : (
+              <div className="flex space-x-2">
+        {attendance?.isPresent ? (
+          <>
+            {isOnBreak ? (
+              <button
+                onClick={() => handleEndBreak(employee._id)}
+                className="flex-1 bg-orange-100 text-orange-700 py-2 px-3 rounded-lg hover:bg-orange-200 transition-colors text-sm font-medium"
+              >
+                End Break
+              </button>
+            ) : (
+              <div className="flex space-x-1 flex-1">
                 <button
-                  onClick={() => handleCheckIn(employee._id)}
-                  className="flex-1 bg-green-100 text-green-700 py-2 px-3 rounded-lg hover:bg-green-200 transition-colors text-sm font-medium"
+                  onClick={() => handleStartBreak(employee._id, 'lunch')}
+                  className="flex-1 bg-yellow-100 text-yellow-700 py-2 px-2 rounded-lg hover:bg-yellow-200 transition-colors text-xs font-medium"
+                  title="Lunch Break"
                 >
-                  Check In
+                  Lunch
                 </button>
-              )}
-            </div>
+                <button
+                  onClick={() => handleStartBreak(employee._id, 'tea')}
+                  className="flex-1 bg-green-100 text-green-700 py-2 px-2 rounded-lg hover:bg-green-200 transition-colors text-xs font-medium"
+                  title="Tea Break"
+                >
+                  Tea
+                </button>
+              </div>
+            )}
+            
+            <button
+              onClick={() => handleCheckOut(employee._id)}
+              disabled={attendance.logoutTime}
+              className="flex-1 bg-red-100 text-red-700 py-2 px-3 rounded-lg hover:bg-red-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium"
+            >
+              {attendance.logoutTime ? 'Checked Out' : 'Check Out'}
+            </button>
+          </>
+        ) : (
+          <button
+            onClick={() => handleCheckIn(employee._id)}
+            className="flex-1 bg-green-100 text-green-700 py-2 px-3 rounded-lg hover:bg-green-200 transition-colors text-sm font-medium"
+          >
+            Check In
+          </button>
+        )}
+      </div>
 
             {/* View Actions */}
             <div className="flex space-x-2">
@@ -700,7 +866,7 @@ const EmployeeManagementSystem = () => {
             </div>
           </div>
         </div>
-      </div>
+      // </div>
     );
   };
 
@@ -1376,25 +1542,35 @@ const EmployeeManagementSystem = () => {
     const [reportType, setReportType] = useState('attendance');
     const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+const generateReport = async () => {
+  setLoading(true);
+  try {
+    let endpoint = '';
+    const params = new URLSearchParams();
+    
+    if (reportType === 'attendance') {
+      endpoint = '/employees/stats/attendance';
+      if (selectedMonth) params.append('month', selectedMonth.toString());
+      if (selectedYear) params.append('year', selectedYear.toString());
+    } else if (reportType === 'salary') {
+      endpoint = '/employees/salary/summary/' + selectedMonth + '/' + selectedYear;
+    }
+    
+    const finalEndpoint = endpoint + (params.toString() ? '?' + params.toString() : '');
+    console.log('Generating report with endpoint:', finalEndpoint);
+    
+    const data = await apiCall(finalEndpoint);
+    console.log('Report data received:', data);
+    
+    setReportData(data.data || data);
+  } catch (error) {
+    console.error('Report generation error:', error);
+    alert('Failed to generate report: ' + error.message);
+  } finally {
+    setLoading(false);
+  }
+};
 
-    const generateReport = async () => {
-      setLoading(true);
-      try {
-        let endpoint = '';
-        if (reportType === 'attendance') {
-          endpoint = `/employees/stats/attendance?month=${selectedMonth}&year=${selectedYear}`;
-        } else if (reportType === 'salary') {
-          endpoint = `/employees/salary/summary/${selectedMonth}/${selectedYear}`;
-        }
-        
-        const data = await apiCall(endpoint);
-        setReportData(data.data);
-      } catch (error) {
-        alert('Failed to generate report: ' + error.message);
-      } finally {
-        setLoading(false);
-      }
-    };
 
     useEffect(() => {
       generateReport();
@@ -1706,314 +1882,345 @@ const EmployeeManagementSystem = () => {
         </div>
       )}
 
-      {showDetailsModal && selectedEmployee && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-screen overflow-hidden">
-            <div className="p-6 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold text-gray-800">
-                  {selectedEmployee.name} - Employee Details
-                </h2>
-                <button
-                  onClick={() => {
-                    setShowDetailsModal(false);
-                    setSelectedEmployee(null);
-                  }}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  <X className="w-6 h-6" />
-                </button>
+    {showDetailsModal && selectedEmployee && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-screen overflow-hidden">
+      <div className="p-6 border-b border-gray-200">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-semibold text-gray-800">
+            {selectedEmployee.name || 'Employee'} - Employee Details
+          </h2>
+          <button
+            onClick={() => {
+              setShowDetailsModal(false);
+              setSelectedEmployee(null);
+            }}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+      </div>
+      <div className="p-6 max-h-96 overflow-y-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          <div className="space-y-4">
+            <div>
+              <h3 className="font-semibold text-gray-800 mb-2">Personal Information</h3>
+              <div className="space-y-2 text-sm">
+                <p><span className="font-medium">Employee ID:</span> {selectedEmployee.employeeId || 'N/A'}</p>
+                <p><span className="font-medium">Email:</span> {selectedEmployee.email || 'N/A'}</p>
+                <p><span className="font-medium">Phone:</span> {selectedEmployee.phone || 'N/A'}</p>
+                <p><span className="font-medium">Department:</span> {selectedEmployee.department || 'N/A'}</p>
+                <p>
+                  <span className="font-medium">Join Date:</span> 
+                  {selectedEmployee.joinDate ? new Date(selectedEmployee.joinDate).toLocaleDateString() : 'N/A'}
+                </p>
               </div>
-            </div>
-            <div className="p-6 max-h-96 overflow-y-auto">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="font-semibold text-gray-800 mb-2">Personal Information</h3>
-                    <div className="space-y-2 text-sm">
-                      <p><span className="font-medium">Employee ID:</span> {selectedEmployee.employeeId}</p>
-                      <p><span className="font-medium">Email:</span> {selectedEmployee.email}</p>
-                      <p><span className="font-medium">Phone:</span> {selectedEmployee.phone}</p>
-                      <p><span className="font-medium">Department:</span> {selectedEmployee.department}</p>
-                      <p><span className="font-medium">Join Date:</span> {new Date(selectedEmployee.joinDate).toLocaleDateString()}</p>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="font-semibold text-gray-800 mb-2">Employment Details</h3>
-                    <div className="space-y-2 text-sm">
-                      <p><span className="font-medium">Base Salary:</span> ₹{selectedEmployee.salary?.base?.toLocaleString()}</p>
-                      <p><span className="font-medium">Payroll Type:</span> {selectedEmployee.payrollType}</p>
-                      <p><span className="font-medium">Shift:</span> {selectedEmployee.shiftTiming?.startTime} - {selectedEmployee.shiftTiming?.endTime}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {selectedEmployee.currentMonthStats && (
-                <div className="mb-6">
-                  <h3 className="font-semibold text-gray-800 mb-4">Current Month Statistics</h3>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="text-center p-4 bg-green-50 rounded-lg">
-                      <p className="text-sm text-gray-600">Present Days</p>
-                      <p className="text-2xl font-bold text-green-600">
-                        {selectedEmployee.currentMonthStats.presentDays}
-                      </p>
-                    </div>
-                    <div className="text-center p-4 bg-blue-50 rounded-lg">
-                      <p className="text-sm text-gray-600">Total Hours</p>
-                      <p className="text-2xl font-bold text-blue-600">
-                        {selectedEmployee.currentMonthStats.totalHours}
-                      </p>
-                    </div>
-                    <div className="text-center p-4 bg-purple-50 rounded-lg">
-                      <p className="text-sm text-gray-600">Overtime</p>
-                      <p className="text-2xl font-bold text-purple-600">
-                        {selectedEmployee.currentMonthStats.overtimeHours || 0}
-                      </p>
-                    </div>
-                    <div className="text-center p-4 bg-yellow-50 rounded-lg">
-                      <p className="text-sm text-gray-600">Attendance</p>
-                      <p className="text-2xl font-bold text-yellow-600">
-                        {selectedEmployee.currentMonthStats.attendancePercentage}%
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {selectedEmployee.recentAttendance && (
-                <div>
-                  <h3 className="font-semibold text-gray-800 mb-4">Recent Attendance (Last 30 days)</h3>
-                  <div className="max-h-64 overflow-y-auto space-y-2">
-                    {selectedEmployee.recentAttendance.slice(0, 10).map((att, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                        <div className="flex items-center space-x-3">
-                          {att.isPresent ? (
-                            <CheckCircle className="w-5 h-5 text-green-600" />
-                          ) : (
-                            <XCircle className="w-5 h-5 text-red-600" />
-                          )}
-                          <span className="font-medium">
-                            {new Date(att.date).toLocaleDateString()}
-                          </span>
-                          <span className={`px-2 py-1 text-xs rounded-full ${
-                            att.status === 'present' ? 'bg-green-100 text-green-800' :
-                            att.status === 'late' ? 'bg-yellow-100 text-yellow-800' :
-                            att.status === 'absent' ? 'bg-red-100 text-red-800' :
-                            'bg-gray-100 text-gray-800'
-                          }`}>
-                            {att.status}
-                          </span>
-                        </div>
-                        <div className="text-right text-sm text-gray-600">
-                          {att.isPresent && (
-                            <div>
-                              <div>In: {att.loginTime ? new Date(att.loginTime).toLocaleTimeString('en-US', { hour12: true, hour: '2-digit', minute: '2-digit' }) : '-'}</div>
-                              <div>Out: {att.logoutTime ? new Date(att.logoutTime).toLocaleTimeString('en-US', { hour12: true, hour: '2-digit', minute: '2-digit' }) : '-'}</div>
-                              <div>Hours: {att.hoursWorked || 0}</div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           </div>
-        </div>
-      )}
-
-      {showSalaryModal && selectedEmployee && salaryData && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-screen overflow-hidden">
-            <div className="p-6 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold text-gray-800">
-                  Salary Details - {selectedEmployee.name}
-                </h2>
-                <button
-                  onClick={() => {
-                    setShowSalaryModal(false);
-                    setSalaryData(null);
-                    setSelectedEmployee(null);
-                  }}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
-            </div>
-            <div className="p-6">
-              <div className="space-y-6">
-                <div className="text-center">
-                  <h3 className="text-lg font-semibold text-gray-800">
-                    Salary Breakdown for {salaryData.period}
-                  </h3>
-                </div>
-
-                <div className="bg-gray-50 rounded-lg p-6">
-                  <div className="space-y-3">
-                    <div className="flex justify-between">
-                      <span>Base Salary:</span>
-                      <span className="font-medium">₹{salaryData.earnings.baseSalary || 0}</span>
-                    </div>
-
-                    {salaryData.earnings.overtimePay > 0 && (
-                      <div className="flex justify-between">
-                        <span>Overtime Pay:</span>
-                        <span className="font-medium">₹{salaryData.earnings.overtimePay?.toLocaleString()}</span>
-                      </div>
-                    )}
-
-                    {salaryData.earnings.totalAllowances > 0 && (
-                      <div className="flex justify-between">
-                        <span>Allowances:</span>
-                        <span className="font-medium">₹{salaryData.earnings.totalAllowances?.toLocaleString()}</span>
-                      </div>
-                    )}
-                    
-                    <hr className="border-gray-300" />
-                    
-                    <div className="flex justify-between">
-                      <span>Gross Salary:</span>
-                      <span className="font-medium">₹{salaryData.earnings.grossSalary?.toLocaleString() || 0}</span>
-                    </div>
-                    
-                    {salaryData.deductions.totalDeductions > 0 && (
-                      <div className="flex justify-between text-red-600">
-                        <span>Deductions:</span>
-                        <span className="font-medium">-₹{salaryData.deductions.totalDeductions?.toLocaleString()}</span>
-                      </div>
-                    )}
-                    
-                    <hr className="border-gray-300" />
-                    
-                    <div className="flex justify-between text-lg font-bold text-green-600">
-                      <span>Net Salary:</span>
-                      <span>₹{salaryData.earnings.finalNetSalary?.toLocaleString() || salaryData.earnings.netSalary?.toLocaleString() || 0}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="text-center p-4 bg-blue-50 rounded-lg">
-                    <p className="text-sm text-gray-600">Present Days</p>
-                    <p className="text-2xl font-bold text-blue-600">
-                      {salaryData.period.presentDays}
-                    </p>
-                  </div>
-                  <div className="text-center p-4 bg-green-50 rounded-lg">
-                    <p className="text-sm text-gray-600">Attendance %</p>
-                    <p className="text-2xl font-bold text-green-600">
-                      {/* {salaryData.period.attendancePercentage}% */}
-                    </p>
-                  </div>
-                </div>
+          
+          <div className="space-y-4">
+            <div>
+              <h3 className="font-semibold text-gray-800 mb-2">Employment Details</h3>
+              <div className="space-y-2 text-sm">
+                <p>
+                  <span className="font-medium">Base Salary:</span> 
+                  ₹{(selectedEmployee.salary?.base || 0).toLocaleString()}
+                </p>
+                <p><span className="font-medium">Payroll Type:</span> {selectedEmployee.payrollType || 'N/A'}</p>
+                <p>
+                  <span className="font-medium">Shift:</span> 
+                  {selectedEmployee.shiftTiming?.startTime || '09:00'} - {selectedEmployee.shiftTiming?.endTime || '18:00'}
+                </p>
               </div>
             </div>
           </div>
         </div>
-      )}
+
+        {/* Rest of the modal content with safe property access */}
+        {selectedEmployee.currentMonthStats && (
+          <div className="mb-6">
+            <h3 className="font-semibold text-gray-800 mb-4">Current Month Statistics</h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="text-center p-4 bg-green-50 rounded-lg">
+                <p className="text-sm text-gray-600">Present Days</p>
+                <p className="text-2xl font-bold text-green-600">
+                  {Number(selectedEmployee.currentMonthStats.presentDays || 0)}
+                </p>
+              </div>
+              <div className="text-center p-4 bg-blue-50 rounded-lg">
+                <p className="text-sm text-gray-600">Total Hours</p>
+                <p className="text-2xl font-bold text-blue-600">
+                  {Number(selectedEmployee.currentMonthStats.totalHours || 0)}
+                </p>
+              </div>
+              <div className="text-center p-4 bg-purple-50 rounded-lg">
+                <p className="text-sm text-gray-600">Overtime</p>
+                <p className="text-2xl font-bold text-purple-600">
+                  {Number(selectedEmployee.currentMonthStats.overtimeHours || 0)}
+                </p>
+              </div>
+              <div className="text-center p-4 bg-yellow-50 rounded-lg">
+                <p className="text-sm text-gray-600">Attendance</p>
+                <p className="text-2xl font-bold text-yellow-600">
+                  {Number(selectedEmployee.currentMonthStats.attendancePercentage || 0)}%
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Recent attendance section with safe rendering */}
+        {Array.isArray(selectedEmployee.recentAttendance) && selectedEmployee.recentAttendance.length > 0 && (
+          <div>
+            <h3 className="font-semibold text-gray-800 mb-4">Recent Attendance (Last 30 days)</h3>
+            <div className="max-h-64 overflow-y-auto space-y-2">
+              {selectedEmployee.recentAttendance.slice(0, 10).map((att, index) => (
+                <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-center space-x-3">
+                    {att.isPresent ? (
+                      <CheckCircle className="w-5 h-5 text-green-600" />
+                    ) : (
+                      <XCircle className="w-5 h-5 text-red-600" />
+                    )}
+                    <span className="font-medium">
+                      {att.date ? new Date(att.date).toLocaleDateString() : 'N/A'}
+                    </span>
+                    <span className={`px-2 py-1 text-xs rounded-full ${
+                      att.status === 'present' ? 'bg-green-100 text-green-800' :
+                      att.status === 'late' ? 'bg-yellow-100 text-yellow-800' :
+                      att.status === 'absent' ? 'bg-red-100 text-red-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>
+                      {att.status || 'unknown'}
+                    </span>
+                  </div>
+                  <div className="text-right text-sm text-gray-600">
+                    {att.isPresent && (
+                      <div>
+                        <div>
+                          In: {att.loginTime ? new Date(att.loginTime).toLocaleTimeString('en-US', { 
+                            hour12: true, hour: '2-digit', minute: '2-digit' 
+                          }) : '-'}
+                        </div>
+                        <div>
+                          Out: {att.logoutTime ? new Date(att.logoutTime).toLocaleTimeString('en-US', { 
+                            hour12: true, hour: '2-digit', minute: '2-digit' 
+                          }) : '-'}
+                        </div>
+                        <div>Hours: {Number(att.hoursWorked || 0)}</div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  </div>
+)}
+
+  {showSalaryModal && selectedEmployee && salaryData && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-screen overflow-hidden">
+      <div className="p-6 border-b border-gray-200">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-semibold text-gray-800">
+            Salary Details - {selectedEmployee.name}
+          </h2>
+          <button
+            onClick={() => {
+              setShowSalaryModal(false);
+              setSalaryData(null);
+              setSelectedEmployee(null);
+            }}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+      </div>
+      <div className="p-6">
+        <div className="space-y-6">
+          <div className="text-center">
+            <h3 className="text-lg font-semibold text-gray-800">
+              Salary Breakdown for {salaryData.period?.monthName || 'Current Month'}
+            </h3>
+          </div>
+
+          <div className="bg-gray-50 rounded-lg p-6">
+            <div className="space-y-3">
+              <div className="flex justify-between">
+                <span>Base Salary:</span>
+                <span className="font-medium">₹{(salaryData.earnings?.baseSalary || 0).toLocaleString()}</span>
+              </div>
+
+              {(salaryData.earnings?.overtimePay || 0) > 0 && (
+                <div className="flex justify-between">
+                  <span>Overtime Pay:</span>
+                  <span className="font-medium">₹{(salaryData.earnings?.overtimePay || 0).toLocaleString()}</span>
+                </div>
+              )}
+
+              {(salaryData.earnings?.totalAllowances || 0) > 0 && (
+                <div className="flex justify-between">
+                  <span>Allowances:</span>
+                  <span className="font-medium">₹{(salaryData.earnings?.totalAllowances || 0).toLocaleString()}</span>
+                </div>
+              )}
+              
+              <hr className="border-gray-300" />
+              
+              <div className="flex justify-between">
+                <span>Gross Salary:</span>
+                <span className="font-medium">₹{(salaryData.earnings?.grossSalary || 0).toLocaleString()}</span>
+              </div>
+              
+              {(salaryData.deductions?.totalDeductions || 0) > 0 && (
+                <div className="flex justify-between text-red-600">
+                  <span>Deductions:</span>
+                  <span className="font-medium">-₹{(salaryData.deductions?.totalDeductions || 0).toLocaleString()}</span>
+                </div>
+              )}
+              
+              <hr className="border-gray-300" />
+              
+              <div className="flex justify-between text-lg font-bold text-green-600">
+                <span>Net Salary:</span>
+                <span>₹{(salaryData.earnings?.netSalary || 0).toLocaleString()}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="text-center p-4 bg-blue-50 rounded-lg">
+              <p className="text-sm text-gray-600">Present Days</p>
+              <p className="text-2xl font-bold text-blue-600">
+                {salaryData.period?.presentDays || salaryData.attendance?.presentDays || 0}
+              </p>
+            </div>
+            <div className="text-center p-4 bg-green-50 rounded-lg">
+              <p className="text-sm text-gray-600">Attendance %</p>
+              <p className="text-2xl font-bold text-green-600">
+                {salaryData.period?.attendancePercentage || salaryData.attendance?.attendancePercentage || 0}%
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
+
 
       {showPayslipModal && selectedEmployee && payslipData && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-screen overflow-hidden">
-            <div className="p-6 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold text-gray-800">
-                  Payslip - {payslipData.employee.name}
-                </h2>
-                <button
-                  onClick={() => {
-                    setShowPayslipModal(false);
-                    setPayslipData(null);
-                    setSelectedEmployee(null);
-                  }}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-screen overflow-hidden">
+      <div className="p-6 border-b border-gray-200">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-semibold text-gray-800">
+            Payslip - {payslipData.employee?.name || selectedEmployee.name}
+          </h2>
+          <button
+            onClick={() => {
+              setShowPayslipModal(false);
+              setPayslipData(null);
+              setSelectedEmployee(null);
+            }}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+      </div>
+      <div className="p-6 max-h-96 overflow-y-auto">
+        <div className="space-y-6">
+          <div className="text-center border-b pb-4">
+            <h3 className="text-xl font-bold text-gray-800">Salary Slip</h3>
+            <p className="text-gray-600">
+              {payslipData.period?.monthName || 'Current Month'} {payslipData.period?.year || new Date().getFullYear()}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <p><strong>Employee ID:</strong> {payslipData.employee?.employeeId || ''}</p>
+              <p><strong>Name:</strong> {payslipData.employee?.name || ''}</p>
+              <p><strong>Department:</strong> {payslipData.employee?.department || ''}</p>
             </div>
-            <div className="p-6 max-h-96 overflow-y-auto">
-              <div className="space-y-6">
-                <div className="text-center border-b pb-4">
-                  <h3 className="text-xl font-bold text-gray-800">Salary Slip</h3>
-                  <p className="text-gray-600">{payslipData.period.monthName} {payslipData.period.year}</p>
-                </div>
+            <div>
+              <p><strong>Working Days:</strong> {payslipData.period?.workingDays || 0}</p>
+              <p><strong>Present Days:</strong> {payslipData.period?.presentDays || 0}</p>
+              <p><strong>Generated On:</strong> {new Date(payslipData.generatedOn || new Date()).toLocaleDateString()}</p>
+            </div>
+          </div>
 
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <p><strong>Employee ID:</strong> {payslipData.employee.employeeId}</p>
-                    <p><strong>Name:</strong> {payslipData.employee.name}</p>
-                    <p><strong>Department:</strong> {payslipData.employee.department}</p>
-                  </div>
-                  <div>
-                    <p><strong>Working Days:</strong> {payslipData.period.workingDays}</p>
-                    <p><strong>Present Days:</strong> {payslipData.period.presentDays}</p>
-                    <p><strong>Generated On:</strong> {new Date(payslipData.generatedOn).toLocaleDateString()}</p>
-                  </div>
+          <div>
+            <h4 className="font-semibold text-gray-800 mb-3">Earnings</h4>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span>Basic Salary</span>
+                <span>₹{(payslipData.earnings?.basicSalary || 0).toLocaleString()}</span>
+              </div>
+              {(payslipData.earnings?.overtimePay || 0) > 0 && (
+                <div className="flex justify-between">
+                  <span>Overtime Pay</span>
+                  <span>₹{(payslipData.earnings?.overtimePay || 0).toLocaleString()}</span>
                 </div>
-
-                <div>
-                  <h4 className="font-semibold text-gray-800 mb-3">Earnings</h4>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span>Basic Salary</span>
-                      <span>₹{payslipData.earnings.basicSalary?.toLocaleString()}</span>
-                    </div>
-                    {payslipData.earnings.overtimePay > 0 && (
-                      <div className="flex justify-between">
-                        <span>Overtime Pay</span>
-                        <span>₹{payslipData.earnings.overtimePay?.toLocaleString()}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between">
-
-                      <span>Total Earnings</span>
-                      <span className="font-semibold text-green-600">
-                        ₹{payslipData.earnings.totalEarnings?.toLocaleString()}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <div>
-                  <h4 className="font-semibold text-gray-800 mb-3">Deductions</h4>
-                  <div className="space-y-2 text-sm">
-                    {payslipData.deductions.map((deduction, index) => (
-                      <div key={index} className="flex justify-between">
-                        <span>{deduction.name}</span>
-                        <span className="text-red-600">-₹{deduction.amount.toLocaleString()}</span>
-                      </div>
-                    ))}
-                    <div className="flex justify-between">
-                      <span>Total Deductions</span>
-                      <span className="font-semibold text-red-600">
-                        -₹{payslipData.totalDeductions?.toLocaleString()}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex justify-between border-t pt-4">
-                  <span className="font-semibold">Net Pay</span>
-                  <span className="font-semibold text-green-600">
-                    ₹{payslipData.netPay?.toLocaleString()}
-                  </span>
-                </div>
-                <div className="text-center text-xs text-gray-500 mt-4">
-                  <p>Generated by Restaurant EMS</p>
-                  <p>For any queries, contact HR.</p>
-                  <p className="text-gray-400">HR Email: hr@restaurant.com</p>
-                </div>
+              )}
+              <div className="flex justify-between">
+                <span>Total Earnings</span>
+                <span className="font-semibold text-green-600">
+                  ₹{(payslipData.earnings?.totalEarnings || 0).toLocaleString()}
+                </span>
               </div>
             </div>
           </div>
+
+          <div>
+            <h4 className="font-semibold text-gray-800 mb-3">Deductions</h4>
+            <div className="space-y-2 text-sm">
+              {Array.isArray(payslipData.deductions) && payslipData.deductions.length > 0 ? (
+                payslipData.deductions.map((deduction, index) => (
+                  <div key={index} className="flex justify-between">
+                    <span>{deduction.name || 'Deduction'}</span>
+                    <span className="text-red-600">-₹{(deduction.amount || 0).toLocaleString()}</span>
+                  </div>
+                ))
+              ) : (
+                <div className="flex justify-between">
+                  <span>No deductions</span>
+                  <span className="text-gray-500">₹0</span>
+                </div>
+              )}
+              <div className="flex justify-between">
+                <span>Total Deductions</span>
+                <span className="font-semibold text-red-600">
+                  -₹{(payslipData.totalDeductions || 0).toLocaleString()}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-between border-t pt-4">
+            <span className="font-semibold">Net Pay</span>
+            <span className="font-semibold text-green-600">
+              ₹{(payslipData.netPay || 0).toLocaleString()}
+            </span>
+          </div>
+
+          <div className="text-center text-xs text-gray-500 mt-4">
+            <p>Generated by Restaurant EMS</p>
+            <p>For any queries, contact HR.</p>
+            <p className="text-gray-400">HR Email: hr@restaurant.com</p>
+          </div>
         </div>
-      )}
+      </div>
+    </div>
+  </div>
+)}
 
     </div>
 
